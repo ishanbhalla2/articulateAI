@@ -1,0 +1,69 @@
+bundle:
+  name: articulate-ai-ib
+
+include:
+  - resources/*.yml
+
+variables:
+  files_path:
+    description: Volume path for file storage (e.g. /Volumes/catalog/schema/volume_name)
+  files_id:
+    description: Permission to write to volumes
+  postgres_branch:
+    description: Full Lakebase Postgres branch resource name. Obtain by running `databricks postgres list-branches {project-name}`, select the desired item from the output array and use its .name value. Requires the project resource name.
+  media_volume_root:
+    description: Local path of the media volume as seen by the processing job
+  lakebase_endpoint:
+    description: Lakebase endpoint the processing job connects to
+  lakebase_database_name:
+    description: Postgres database name inside the Lakebase branch
+  feedback_scores_table:
+    description: Delta table for per-category scores
+  postgres_database:
+    description: Full Lakebase Postgres database resource name. Obtain by running `databricks postgres list-databases {branch-name}`, select the desired item from the output array and use its .name value. Requires the branch resource name.
+
+resources:
+  apps:
+    app:
+      name: "articulate-ai-ib"
+      description: "Articulate session feedback: multi-judge, audience-aware speaking feedback"
+      source_code_path: ./
+
+      # Start the app automatically on deploy.
+      lifecycle:
+        started: true
+      # No user_api_scopes: files and Lakebase run as the app's service principal, and the
+      # default iam.current-user:read scope is enough for the admin-group check.
+
+      # The resources which this app has access to.
+      resources:
+        - name: files
+          uc_securable:
+            securable_full_name: ${var.files_id}
+            securable_type: VOLUME
+            permission: WRITE_VOLUME
+        - name: postgres
+          postgres:
+            branch: ${var.postgres_branch}
+            database: ${var.postgres_database}
+            permission: CAN_CONNECT_AND_CREATE
+        - name: process-session-job
+          job:
+            id: ${resources.jobs.process_session.id}
+            permission: CAN_MANAGE_RUN
+
+targets:
+  default:
+    default: true
+    workspace:
+      host: https://adb-7405609040922704.4.azuredatabricks.net
+
+    variables:
+      files_path: /Volumes/articulate_ai_ib/articulate/media
+      files_id: articulate_ai_ib.articulate.media
+      postgres_branch: projects/articulate-ai-ib/branches/production
+      postgres_database: projects/articulate-ai-ib/branches/production/databases/databricks-postgres
+      media_volume_root: /Volumes/articulate_ai_ib/articulate/media
+      lakebase_endpoint: projects/articulate-ai-ib/branches/production/endpoints/primary
+      lakebase_database_name: databricks_postgres
+      feedback_scores_table: articulate_ai_ib.articulate.feedback_scores

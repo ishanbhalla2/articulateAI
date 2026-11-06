@@ -1,0 +1,70 @@
+@import "@databricks/appkit-ui/styles.css";
+
+/* Vivanti design system: Manrope, Deep Blue #223554, Cloud Blue #6594E2, 8px radius */
+:root {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --radius: 0.5rem;
+  --background: #f7f9fc;
+  --foreground: #1b2638;
+  --card: #ffffff;
+  --card-foreground: #1b2638;
+  --popover: #ffffff;
+  --popover-foreground: #1b2638;
+  --primary: #223554;
+  --primary-foreground: #ffffff;
+  --secondary: #eef3fb;
+  --secondary-foreground: #223554;
+  --muted: #eef1f6;
+  --muted-foreground: #5a6679;
+  --accent: #e3ecfb;
+  --accent-foreground: #223554;
+  --border: #dde3ec;
+  --input: #ccd5e2;
+  --ring: #6594e2;
+  --chart-1: #6594e2;
+  --chart-2: #223554;
+  --chart-3: #9db9ec;
+  --chart-4: #4a6286;
+  --chart-5: #c9d8f3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111a28;
+    --foreground: #e8edf5;
+    --card: #182335;
+    --card-foreground: #e8edf5;
+    --popover: #182335;
+    --popover-foreground: #e8edf5;
+    --primary: #6594e2;
+    --primary-foreground: #0f1826;
+    --secondary: #223554;
+    --secondary-foreground: #e8edf5;
+    --muted: #1f2b3f;
+    --muted-foreground: #9eabbf;
+    --accent: #223554;
+    --accent-foreground: #e8edf5;
+    --border: #2a3850;
+    --input: #34445e;
+    --ring: #6594e2;
+    --chart-1: #6594e2;
+    --chart-2: #9db9ec;
+    --chart-3: #4a6286;
+    --chart-4: #c9d8f3;
+    --chart-5: #34445e;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@media print {
+  header,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}
