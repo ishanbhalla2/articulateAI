@@ -1,0 +1,105 @@
+resources:
+  jobs:
+    process_session:
+      name: "[articulate-ai-ib] process-session"
+      description: "Turns one Articulate session (talk + judges' feedback) into structured feedback. Triggered by the articulate-ai-ib app."
+      tags:
+        project: articulate-ai
+        owner: ishan.bhalla@vivanti.com
+        env: dev
+      max_concurrent_runs: 5
+      queue:
+        enabled: true
+      timeout_seconds: 5400
+
+      parameters:
+        - name: session_id
+          default: ""
+        - name: whisper_model
+          default: small
+
+      environments:
+        - environment_key: processing
+          spec:
+            client: "4"
+            dependencies:
+              - faster-whisper==1.1.1
+              - imageio-ffmpeg==0.6.0
+              - psycopg[binary]==3.2.10
+              - databricks-sdk==0.156.0
+
+      # Serverless auto-optimization retries failed tasks; a retried step would race the app's own Retry, which resets the session first.
+      tasks:
+        - task_key: prepare_media
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, prepare_media, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}",
+                         --whisper_model, "{{job.parameters.whisper_model}}"]
+
+        - task_key: transcribe
+          depends_on: [{task_key: prepare_media}]
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, transcribe, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}",
+                         --whisper_model, "{{job.parameters.whisper_model}}"]
+
+        - task_key: delivery_metrics
+          depends_on: [{task_key: transcribe}]
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, delivery_metrics, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}"]
+
+        - task_key: classify_domain
+          depends_on: [{task_key: delivery_metrics}]
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, classify_domain, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}"]
+
+        - task_key: generate_feedback
+          depends_on: [{task_key: classify_domain}]
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, generate_feedback, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}"]
+
+        - task_key: persist
+          depends_on: [{task_key: generate_feedback}]
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, persist, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}"]
+
+        # Steps record their own failure; this catches failures before a step's code runs (e.g. environment install).
+        - task_key: mark_failed
+          depends_on: [{task_key: prepare_media}, {task_key: transcribe}, {task_key: delivery_metrics},
+                       {task_key: classify_domain}, {task_key: generate_feedback}, {task_key: persist}]
+          run_if: AT_LEAST_ONE_FAILED
+          environment_key: processing
+          disable_auto_optimization: true
+          spark_python_task:
+            python_file: ../processing/run_step.py
+            parameters: [--step, mark_failed, --session_id, "{{job.parameters.session_id}}", --job_run_id, "{{job.run_id}}",
+                         --volume_root, "${var.media_volume_root}", --lakebase_endpoint, "${var.lakebase_endpoint}",
+                         --database, "${var.lakebase_database_name}", --delta_table, "${var.feedback_scores_table}"]

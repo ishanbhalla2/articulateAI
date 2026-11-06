@@ -1,0 +1,10 @@
+{
+  "run_name": "[articulate-ai-ib] setup delta tables",
+  "tasks": [{
+    "task_key": "create_feedback_scores",
+    "notebook_task": {
+      "notebook_path": "/Workspace/Users/ishan.bhalla@vivanti.com/articulate-ai/setup/feedback_scores",
+      "source": "WORKSPACE"
+    }
+  }]
+}

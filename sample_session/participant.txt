@@ -1,0 +1,8 @@
+Good morning everyone. Um, today I want to talk about how we built our retrieval augmented generation platform on Databricks, and, uh, why we made the architecture choices we did. [[slnc 1200]]
+So, the problem. Our support team answers about four thousand questions a week, and most of the answers already exist somewhere in our documentation. Um, but finding them takes too long. [[slnc 800]]
+We looked at three options. Fine tuning a model, buying an off the shelf assistant, or building retrieval augmented generation on our own data. We chose RAG because, basically, our documents change every week, and fine tuning would always be out of date. [[slnc 3500]]
+The architecture is, um, fairly simple. Documents land in a Unity Catalog volume. A pipeline chunks them and creates embeddings, and those go into a vector search index. When a question comes in, we retrieve the top five chunks and pass them to the model with the question. [[slnc 1000]]
+For governance, everything sits in Unity Catalog, so, you know, the assistant can only see documents the user is allowed to see. [[slnc 800]]
+In terms of cost, we pay per token, and at our volume that is about, uh, nine hundred dollars a month, compared to the twenty thousand dollars a quote we got from the vendor. [[slnc 4000]]
+What we haven't done yet is proper evaluation. Um, we have a feeling it works well, and the support team likes it, but we don't measure accuracy yet. That is the next step. [[slnc 800]]
+So, to sum up. RAG on Databricks, governed by Unity Catalog, at a fraction of the vendor cost. Thank you.
